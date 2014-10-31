@@ -11,6 +11,8 @@
 
 local Emitter = require('core').Emitter
 local hrtime = require('uv').Process.hrtime
+local spawn = require('childprocess').spawn
+local JSON = require('json')
 local os = require('os')
 local timer = require('timer')
 local table = require('table')
@@ -29,7 +31,7 @@ function Member:initialize(config,global)
 	self.port = config.port
 	self.id = config.id
 	self.arbiter = config.arbiter
-	logger:debug('created member',self.id)
+	logger:debug('created member',config)
 	self.probed = {}
 	self.systems = {}
 	
@@ -38,13 +40,12 @@ function Member:initialize(config,global)
 	end
 
 	local node_keys = {}
-	for _idx,key in pairs(global.systems) do
+	for _idx,key in pairs(global.servers[self.id].systems) do
 		node_keys[key] = true
 	end
 
 	for _ids,key in pairs(config.systems) do
 		if node_keys[key] then
-			logger:info(key,self.config.cluster)
 			local group = self.config.cluster.system[key]
 			if not group.member_count then
 				group.member_count = 0
@@ -61,7 +62,6 @@ function Member:enable()
 		local group = self.config.cluster.system[key]
 		local chunk = {}
 		local data = self.systems[key]
-		logger:info(data.id, #group.data, group.member_count)
 		for i = data.id, #group.data, group.member_count do
 			chunk[#chunk +1] = group.data[i]
 		end
@@ -69,10 +69,12 @@ function Member:enable()
 			data.data = chunk
 			data.alive = group.alive
 			data.down = group.down
+			data.config = group.config
 		else
 			data.data = chunk
 			data.alive = group.down
 			data.down = group.alive
+			data.config = group.config
 		end
 		logger:info("chunk",self.id,key,chunk)
 	end
@@ -169,11 +171,18 @@ function Member:handle_change(new_state)
 	logger:info('member has transitioned',self.id,self.state,new_state,self.systems)
 	for key,opts in pairs(self.systems) do
 		for _idx,value in pairs(opts.data) do
-			logger:info("running"
-					,self.id
-					,opts[new_state]
-					,value
-					,self.config.cluster.config)
+
+			local child = spawn(opts[new_state],{value,JSON.stringify(opts.config)})
+			child.stdout:on('data', function(chunk)
+				logger:debug("got",chunk)
+			end)
+			child:on('exit', function(code,other)
+				if not (code == 0 ) then
+					logger:error("script failed",key,opts[new_state],{value,JSON.stringify(opts.config)})
+				else
+					logger:info("script worked",key,opts[new_state],{value,JSON.stringify(opts.config)})
+				end
+			end)
 		end
 	end
 end

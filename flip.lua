@@ -21,6 +21,11 @@ local Member = require('./lib/member')
 local Flip = Emitter:extend()
 
 function Flip:initialize(config)
+	local main_server = config.servers[config.id]
+	if not main_server then
+		logger:fatal("this server is not in the server config block",config.id,config.servers)
+		process.exit(1)
+	end
 	config.members_alive = 0
 	self.config = config
 	self.servers = {}
@@ -29,19 +34,12 @@ function Flip:initialize(config)
 		config.systems = {}
 	end
 	self.dgram = dgram.createSocket('udp4')
-	self.dgram:bind(self.config.gosip_port,self.config.gosip_ip)
+	self.dgram:bind(main_server.port,main_server.ip)
 
 	-- default quorum needed
 	if not self.config.quorum then
 		self.config.quorum = math.floor(#self.config.servers/2) + 1
 	end
-
-	-- add in this server for consistancy
-	config.servers[#config.servers + 1] = 
-		{id = config.id
-		,ip = config.gosip_ip
-		,port = config.gosip_port
-		,systems = config.systems}
 
 	-- we sort these so that we can ensure that they are the same across
 	-- all nodes
@@ -49,12 +47,30 @@ function Flip:initialize(config)
 		return mem1.id < mem2.id 
 	end)
 
+	-- we need to merge all the configs together
 	for _key,value in pairs(config.cluster.system) do
+		
+		local merged = {}
+		if config.cluster.config then
+			for k,v in pairs(config.cluster.config) do
+				merged[k] = v
+			end
+		end
+
+		if value.config then
+			for k,v in pairs(value.config) do
+				merged[k] = v
+			end
+		end
+
+		value.config = merged
+		
 		-- this will only work with strings....
 		table.sort(value.data)
 	end
 
-	for _idx,opts in pairs(config.servers) do
+	for id,opts in pairs(config.servers) do
+		opts.id = id
 		member = Member:new(opts,config)
 		self:add_member(member)
 		member:on('state_change',function(...) self:check(...) end)
@@ -164,7 +180,7 @@ function Flip:ping_members(members)
 	end
 	local member = table.remove(members,1)
 	local count = 0
-	while member and count < self.config.max_pings do
+	while member and count < self.config.ping_per_interval do
 		if member:needs_ping() then
 			local packet = member:ping()
 			logger:debug('sending ping',member.id)
