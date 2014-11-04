@@ -11,12 +11,12 @@
 
 local Emitter = require('core').Emitter
 local hrtime = require('uv').Process.hrtime
-local spawn = require('childprocess').spawn
 local JSON = require('json')
 local os = require('os')
 local timer = require('timer')
 local table = require('table')
 local logger = require('./logger')
+local system = require('./system')
 
 local Member = Emitter:extend()
 
@@ -40,45 +40,35 @@ function Member:initialize(config,global)
 	end
 
 	local node_keys = {}
-	for _idx,key in pairs(global.servers[self.id].systems) do
-		node_keys[key] = true
+
+	-- we only want this node to failover for systems that it has
+	-- assigned to it
+	if global.servers[global.id].systems then
+		for _idx,key in pairs(global.servers[global.id].systems) do
+			node_keys[key] = true
+		end
 	end
 
+	-- create a system for this member and its data
 	for _ids,key in pairs(config.systems) do
 		if node_keys[key] then
 			local group = self.config.cluster.system[key]
-			if not group.member_count then
-				group.member_count = 0
+			if not system[group.type] then
+				logger:fatal('unknown system type',group.type)
+				process.exit(1)
 			end
-			group.member_count = group.member_count + 1
-			self.systems[key] = {id = group.member_count}
+			self.systems[key] = (system[group.type]):new(group)
 		end
 	end
-	self:on('state_change',self.handle_change)
+	-- self:on('state_change',self.handle_change)
 end
 
 function Member:enable()
-	for key,opts in pairs(self.systems) do
-		local group = self.config.cluster.system[key]
-		local chunk = {}
-		local data = self.systems[key]
-		for i = data.id, #group.data, group.member_count do
-			chunk[#chunk +1] = group.data[i]
-		end
-		if self.id == self.config.id then
-			data.data = chunk
-			data.alive = group.alive
-			data.down = group.down
-			data.config = group.config
-		else
-			data.data = chunk
-			data.alive = group.down
-			data.down = group.alive
-			data.config = group.config
-		end
-		logger:info("chunk",self.id,key,chunk)
-	end
 	self:emit('state_change',self,'new')
+	-- set up the cluster for this member
+	for key,system in pairs(self.systems) do
+		system:enable(self)
+	end
 end
 
 function Member:probe(who)
@@ -126,12 +116,13 @@ function Member:ping()
 end
 
 function Member:update_state(new_state)
+	self:clear_alive_check()
 	if not (self.state == new_state) and not ((new_state == 'probably_down') and (self.state == 'down'))then
-		logger:debug('member is transitioning',self.id,self.state,new_state)
-		
-		self:clear_alive_check()
 		
 		self:emit('state_change',self,new_state)
+
+		logger:info('member has transitioned',self.id,self.state,new_state)
+		
 		self.state = new_state
 		self:probe(self.config.id)
 	end
@@ -143,7 +134,7 @@ function Member:start_alive_check()
 		if self.state == 'new' then
 			-- if we are starting up, we give everything a bit of time to
 			-- catch up
-			timeout = timeout * 10
+			timeout = timeout * 2
 		end
 		if not self.timeout then
 			logger:debug('starting alive check',self.state)
@@ -156,36 +147,8 @@ end
 function Member:clear_alive_check()
 	if self.timeout then
 		timer.clearTimer(self.timeout)
+		self.timeout = nil
 	end
 end
-
-function Member:handle_change(new_state)
-	if new_state == 'alive' and not (self.state == 'probably_down') then
-		self.config.members_alive = self.config.members_alive + 1
-	elseif new_state == 'down' then
-		self.config.members_alive = self.config.members_alive - 1
-	else
-		return
-	end
-
-	logger:info('member has transitioned',self.id,self.state,new_state,self.systems)
-	for key,opts in pairs(self.systems) do
-		for _idx,value in pairs(opts.data) do
-
-			local child = spawn(opts[new_state],{value,JSON.stringify(opts.config)})
-			child.stdout:on('data', function(chunk)
-				logger:debug("got",chunk)
-			end)
-			child:on('exit', function(code,other)
-				if not (code == 0 ) then
-					logger:error("script failed",key,opts[new_state],{value,JSON.stringify(opts.config)})
-				else
-					logger:info("script worked",key,opts[new_state],{value,JSON.stringify(opts.config)})
-				end
-			end)
-		end
-	end
-end
-
 
 return Member
