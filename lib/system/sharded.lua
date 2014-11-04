@@ -90,6 +90,7 @@ function Replicate:handle_failover(member,new_state)
 
 	for id,down in pairs(self.failed) do
 		if down and not (member.id == id) then
+			-- this is probably not correct
 			local data = master:data_points_for(member.data,id)
 			self:run('down',data,function() 
 				logger:info("failover complete")
