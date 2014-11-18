@@ -44,6 +44,10 @@ end
 
 function Logger:add_logger(level,id,fun)
 	if not self.loggers[id] then
+		if not fun then
+			fun = p
+		end
+
 		self.loggers[id] = fun
 
 		self:on('.' ..level,fun)
@@ -60,10 +64,5 @@ function Logger:remove_logger(id)
 		self:removeListener('.' .. level,logger)
 	end
 end
-
-function Logger:log (level, ...)
-	p(level,...)
-end
-
 
 return Logger:new()

@@ -17,6 +17,7 @@ local string = require('string')
 local math = require('math')
 local logger = require('./lib/logger')
 local Member = require('./lib/member')
+local systems = require('./lib/system')
 
 local Flip = Emitter:extend()
 
@@ -38,7 +39,11 @@ function Flip:initialize(config)
 
 	-- default quorum needed
 	if not self.config.quorum then
-		self.config.quorum = math.floor(#self.config.servers/2) + 1
+		local server_count = 0
+		for _id,_value in pairs(self.config.servers) do
+			server_count = server_count + 1
+		end
+		self.config.quorum = math.floor(server_count/2) + 1
 	end
 
 	-- we sort these so that we can ensure that they are the same across
@@ -48,8 +53,7 @@ function Flip:initialize(config)
 	end)
 
 	-- we need to merge all the configs together
-	for _key,value in pairs(config.cluster.system) do
-		
+	for key,value in pairs(config.cluster.system) do
 		local merged = {}
 		if config.cluster.config then
 			for k,v in pairs(config.cluster.config) do
@@ -64,9 +68,12 @@ function Flip:initialize(config)
 		end
 
 		value.config = merged
-		
-		-- this will only work with strings....
-		table.sort(value.data)
+		if value.type and systems[value.type] and systems[value.type].prepare then
+			value.data = systems[value.type].prepare(value.data)
+		else
+			-- this will only work with strings....
+			table.sort(value.data)
+		end
 	end
 
 	for id,opts in pairs(config.servers) do
