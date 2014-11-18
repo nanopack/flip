@@ -22,6 +22,10 @@ function Plan:initialize(system,id,type)
 	self.id = id
 	self.plan = {}
 	self.mature = false
+	local me = self
+	process:on('SIGINT',function() me:shutdown() end)
+	process:on('SIGQUIT',function() me:shutdown() end)
+	process:on('SIGTERM',function() me:shutdown() end)
 end
 
 function Plan:set_new(is_dead)
@@ -140,6 +144,11 @@ function Plan:activate(Timeout)
 	end
 end
 
+function Plan:shutdown()
+	self:_run('down',self.plan,function()
+		process.exit(1)
+	end)
+end
 
 function Plan:run()
 
