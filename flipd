@@ -15,7 +15,6 @@ local JSON = require('json')
 local utils = require('utils')
 local Flip = require('./flip')
 local logger = require('./lib/logger')
-local jch = require('./lib/jch')
 
 
 logger:add_logger('info','console',p)
