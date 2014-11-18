@@ -10,8 +10,8 @@ ip2dec () {
 
 if [ `uname -s` = 'SunOS' ]; then  
   ip=`ip2dec $1`
-  interface=`echo  '$2' | json interface`
-  if ipadm show-addr $interface/ip$ip > /dev/null; then
+  interface=`echo  "$2" | json interface`
+  if ipadm show-addr $interface/ip$ip &> /dev/null; then
     exec ipadm delete-addr $interface/ip$ip
   fi
 
