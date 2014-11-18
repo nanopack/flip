@@ -195,7 +195,9 @@ function Plan:run()
 				logger:info("new plan",self.plan)
 			else
 				logger:info("running next set of jobs",self.queue)
-				self:compute(self.queue)
+				local queue = self.queue
+				self.queue = nil
+				self:compute(queue)
 			end
 		end)
 	end)
