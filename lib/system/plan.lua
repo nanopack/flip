@@ -58,6 +58,7 @@ function Plan:set_new(is_dead)
 		end
 	end
 	self.next_plan = add
+	self.last_group = #is_dead
 end
 
 
@@ -68,7 +69,7 @@ function Plan:activate(Timeout)
 	end
 
 	if self.queue then
-		self.queue = self.next_plan
+		self.queue = {add = self.next_plan,remove = {}}
 	else
 
 		logger:debug("setting plan",self.next_plan)
@@ -81,14 +82,6 @@ function Plan:activate(Timeout)
 			local index = 1
 			local lidx = 1
 			logger:debug("start",idx,new_plan)
-			-- this is not really working yet, on a restart I need to remove
-			-- any data points that I am responsibe for
-
-			-- local check = self.plan
-			-- if not self.mature then
-			-- 	logger:info("not mature yet")
-			-- 	check = self.system.data
-			-- end
 
 			for idx=1, #new_plan do
 				
@@ -122,6 +115,18 @@ function Plan:activate(Timeout)
 			for idx=lidx,#new_plan do
 				logger:debug("batch adding",new_plan[idx])
 				add[#add +1] = new_plan[idx]
+			end
+
+			-- this is not really working yet, on a restart I need to remove
+			-- any data points that I am responsibe for
+
+			if not self.mature then
+				logger:info("not mature yet",#self.system.data,self.last_group)
+				for i=1,#self.system.data do
+					if not ((i % self.last_group) + 1 == self.id) then
+						remove[#remove +1] = self.system.data[i]
+					end
+				end
 			end
 
 			-- if there were changes

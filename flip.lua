@@ -187,7 +187,7 @@ function Flip:ping_members(members)
 	end
 	local member = table.remove(members,1)
 	local count = 0
-	while member and count < self.config.ping_per_interval do
+	while member do
 		if member:needs_ping() then
 			local packet = member:ping()
 			logger:debug('sending ping',member.id)
@@ -196,14 +196,17 @@ function Flip:ping_members(members)
 			member:start_alive_check()
 			count = count + 1 
 		end
-
-		member = table.remove(members,1)
+		if count < self.config.ping_per_interval then
+			member = table.remove(members,1)
+		else
+			break
+		end
 	end
 
 	logger:debug("done with round")
 	-- if we still have some members left over, we need to ping them
 	-- on the next timeout. Otherwise we start gossiping all over again
-	if not #members == 0 then
+	if not (#members == 0) then
 		timer.setTimeout(self.config.gossip_interval,self.ping_members,self,members)
 	else
 		timer.setTimeout(self.config.gossip_interval,self.gossip_time,self)
