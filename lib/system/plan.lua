@@ -73,74 +73,80 @@ function Plan:activate(Timeout)
 	end
 
 	if self.queue then
-		self.queue = {add = self.next_plan,remove = {}}
+		self.queue = self.next_plan
+		self.next_plan = nil
 	else
 
 		logger:debug("setting plan",self.next_plan)
+		local me = self
 		self.plan_activation_timer = timer.setTimeout(Timeout,function(new_plan)
-			-- we order the array to make the comparison easier
-			table.sort(new_plan)
-
-			local add = {}
-			local remove = {}
-			local index = 1
-			local lidx = 1
-			logger:debug("start",idx,new_plan)
-
-			for idx=1, #new_plan do
-				
-				--- value     1,3,4
-				--- self.plan 1,2,3
-				logger:debug("compare",self.plan[index],new_plan[idx])
-				if (new_plan[idx] and not self.plan[index]) or (self.plan[index] > new_plan[idx]) then
-					logger:debug("adding",new_plan[idx])
-					add[#add +1] = new_plan[idx]
-				elseif (self.plan[idx] and not new_plan[index]) or (self.plan[index] < new_plan[idx]) then
-					logger:debug("removing",new_plan[idx])
-					remove[#remove +1] = self.plan[index]
-					index = index + 1
-					idx = idx - 1
-				else
-					logger:debug("skipping",new_plan[idx])
-					idx = idx + 1
-					index = index + 1
-				end
-				lidx = idx
-			end
-			lidx = lidx + 1
-
-			-- everything else gets removed
-			for index=index,#self.plan do
-				logger:debug("batch removing",self.plan[index])
-				remove[#remove +1] = self.plan[index]
-			end
-
-			-- everything else gets added
-			for idx=lidx,#new_plan do
-				logger:debug("batch adding",new_plan[idx])
-				add[#add +1] = new_plan[idx]
-			end
-
-			-- this is not really working yet, on a restart I need to remove
-			-- any data points that I am responsibe for
-
-			if not self.mature then
-				logger:info("not mature yet",#self.system.data,self.last_group)
-				for i=1,#self.system.data do
-					if not ((i % self.last_group) + 1 == self.id) then
-						remove[#remove +1] = self.system.data[i]
-					end
-				end
-			end
-
-			-- if there were changes
-			if (#add > 0) or (#remove > 0) then
-				self.queue = {add = add,remove = remove}
-				self:run()
-			else
-				logger:info("no change in the plan",self.plan)
-			end
+			me:compute(new_plan)
 		end,self.next_plan)
+	end
+end
+
+function Plan:compute(new_plan)
+	-- we order the array to make the comparison easier
+	table.sort(new_plan)
+
+	local add = {}
+	local remove = {}
+	local index = 1
+	local lidx = 1
+	logger:debug("start",idx,new_plan)
+
+	for idx=1, #new_plan do
+		
+		--- value     1,3,4
+		--- self.plan 1,2,3
+		logger:debug("compare",self.plan[index],new_plan[idx])
+		if (new_plan[idx] and not self.plan[index]) or (self.plan[index] > new_plan[idx]) then
+			logger:debug("adding",new_plan[idx])
+			add[#add +1] = new_plan[idx]
+		elseif (self.plan[idx] and not new_plan[index]) or (self.plan[index] < new_plan[idx]) then
+			logger:debug("removing",new_plan[idx])
+			remove[#remove +1] = self.plan[index]
+			index = index + 1
+			idx = idx - 1
+		else
+			logger:debug("skipping",new_plan[idx])
+			idx = idx + 1
+			index = index + 1
+		end
+		lidx = idx
+	end
+	lidx = lidx + 1
+
+	-- everything else gets removed
+	for index=index,#self.plan do
+		logger:debug("batch removing",self.plan[index])
+		remove[#remove +1] = self.plan[index]
+	end
+
+	-- everything else gets added
+	for idx=lidx,#new_plan do
+		logger:debug("batch adding",new_plan[idx])
+		add[#add +1] = new_plan[idx]
+	end
+
+	-- this is not really working yet, on a restart I need to remove
+	-- any data points that I am responsibe for
+
+	if not self.mature then
+		logger:info("not mature yet",#self.system.data,self.last_group)
+		for i=1,#self.system.data do
+			if not ((i % self.last_group) + 1 == self.id) then
+				remove[#remove +1] = self.system.data[i]
+			end
+		end
+	end
+
+	-- if there were changes
+	if (#add > 0) or (#remove > 0) then
+		self.queue = {add = add,remove = remove}
+		self:run()
+	else
+		logger:info("no change in the plan",self.plan)
 	end
 end
 
@@ -189,7 +195,7 @@ function Plan:run()
 				logger:info("new plan",self.plan)
 			else
 				logger:info("running next set of jobs",self.queue)
-				self:run()
+				self:compute(self.queue)
 			end
 		end)
 	end)

@@ -142,7 +142,7 @@ function Flip:handle_message(msg, rinfo)
 			end
 		end
 	else
-		logger:warning('wrong key in packet',rinfo)
+		logger:warning('wrong key in packet',rinfo,msg)
 	end
 end
 
