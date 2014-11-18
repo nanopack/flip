@@ -99,3 +99,8 @@ Flip has other parameters that can be enabled to tune it to your specific applic
 - ping_timeout - how long to wait without receiving a response before flagging the node as 'probably_down' and sending probes to other nodes
 
 
+#Future work
+ - Allow nodes to be dynamically added/removed to the cluster without having to reprovision all nodes in the cluster.
+ - Allow data to be added/removed to the system without having to reprovision all nodes in the cluster.
+
+If anyone wants to work on any issues or this future work, I will accept pull requests that have tests written and that move flip closer to being feature complete.
