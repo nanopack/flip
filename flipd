@@ -17,7 +17,7 @@ local Flip = require('./flip')
 local logger = require('./lib/logger')
 
 
-logger:add_logger('info','console',p)
+
 
 -- set up default location for the config file
 local configPath = "/opt/local/etc/flip/flip.conf"
@@ -31,10 +31,15 @@ end
 -- load config file
 fs.readFile(configPath,function(err,data)
 	if err then
-		logger:fatal('unable to load config file',err)
+		p('unable to load config file',err)
 		process.exit(1)
 	else
 		local config = JSON.parse(data)
+		if config.log_level and logger:valid_level(config.log_level) then
+			logger:add_logger(config.log_level,'console',p)
+		else
+			logger:add_logger('info','console',p)
+		end
 		local flip = Flip:new(config)
 
 		logger:info('starting up flip',config)

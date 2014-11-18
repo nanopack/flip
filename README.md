@@ -15,6 +15,7 @@ Here is a an example config file:
 	,"key" : "secret"
 	,"ping_per_interval" : 3
 	,"ping_timeout" : 1500
+	,"log_level" : "info"
 	,"servers" : 
 		{"flip" : {"ip" : "127.0.0.1","port" : 2200, "systems": ["ip"]}
 		,"flip1" : {"ip" : "127.0.0.1","port" : 2201, "systems": ["ip"]}
@@ -97,6 +98,7 @@ Flip has other parameters that can be enabled to tune it to your specific applic
 - key - this is a key used to identify flip groups, all nodes of the cluster must use the same key
 - ping_per_interval - this is how many nodes will be pinged per gossip_interval
 - ping_timeout - how long to wait without receiving a response before flagging the node as 'probably_down' and sending probes to other nodes
+- log_level - what level of logging to enable, valid levels are: 'debug','info','warning','error', and 'fatal'
 
 
 #Future work

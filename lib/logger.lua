@@ -38,6 +38,15 @@ do
 	end
 end
 
+function Logger:valid_level(level)
+	for _idx,lev in pairs(levels) do
+		if lev == level then
+			return true
+		end
+	end
+	return false
+end
+
 function Logger:initialize ()
 	self.loggers = {}
 end
