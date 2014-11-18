@@ -1,7 +1,7 @@
 **This is a work in progess, as luvit is evolving its api, flip will have to adjust to match.**
 
 #Flip
-Flip manages flipping data between nodes in a cluster. It has been written to be a replacement to vippy, an ip management utility for virtual ip failover. Flip is much more extenable then vippy though, and probably is closer to a pre-release version of serf.
+Flip manages flipping data between nodes in a cluster. It has been written to be a replacement to vippy, an ip management utility for virtual ip failover. Flip is much more extenable then [vippy](https://github.com/postwait/vippy) though, and probably is closer to a pre-release version of [serf](https://github.com/hashicorp/serf).
 
 #Example
 Lets look at how Flip handles virtual ip failover.
