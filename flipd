@@ -11,6 +11,7 @@
 ---------------------------------------------------------------------
 
 local fs = require('fs')
+local os = require('os')
 local JSON = require('json')
 local math = require('math')
 local utils = require('utils')
@@ -108,9 +109,9 @@ else
 		else
 			local config = JSON.parse(data)
 			if config.log_level and logger:valid_level(config.log_level) then
-				logger:add_logger(config.log_level,'console',p)
+				logger:add_logger(config.log_level,'console',function(...) p(os.date("%x %X"),...) end)
 			else
-				logger:add_logger('info','console',p)
+				logger:add_logger('info','console',function(...) p(os.date("%x %X"),...) end)
 			end
 			validate_config(config)
 			local flip = Flip:new(config)
