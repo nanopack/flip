@@ -19,14 +19,10 @@ local math = require('math')
 local logger = require('./lib/logger')
 local Member = require('./lib/member')
 local System = require('./lib/system')
-local Packet = require('./lib/packet')
 
 local Flip = Emitter:extend()
 
 function Flip:initialize(config)
-	-- local packet = Packet:build("asdfasdfasdfasdfasdfasdfasdfasdfasdfasdf",1,{true,false,true,true,true,true,true,true,true,true,true,true,true,false,true})
-	-- logger:info("generated",json.stringify(packet))
-	-- process.exit(1)
 	self.config = config
 	self.servers = {}
 	self.note = {}
