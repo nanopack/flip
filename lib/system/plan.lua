@@ -43,14 +43,15 @@ function Plan:set_new(is_dead)
 			alive_count = alive_count - 1
 		end
 	end
-	logger:debug("check what is alive",alive_count,self.system.data)
+	logger:debug("check what is alive",alive_count,self.system.data,id)
+
 
 	for i=1,#self.system.data do
-		logger:debug("mod",(i % count) + 1,is_dead[(i % count) + 1],is_dead,self.id)
-		if (i % count) + 1 == self.id then
+		logger:debug("mod",((i - 1) % count) + 1,is_dead[((i - 1) % count) + 1],is_dead,self.id)
+		if ((i - 1) % count) + 1 == self.id then
 			logger:debug("its me!",self.system.data[i])
 			add[#add + 1] = self.system.data[i]
-		elseif is_dead[(i % count) + 1] then
+		elseif is_dead[((i - 1) % count) + 1] then
 			logger:debug("not alive",self.system.data[i],idx,alive_count,self.id,id)
 			-- if the other node is down, and we are responsible for it
 			-- add it in
@@ -135,7 +136,7 @@ function Plan:compute(new_plan)
 	if not self.mature then
 		logger:info("not mature yet",#self.system.data,self.last_group)
 		for i=1,#self.system.data do
-			if not ((i % self.last_group) + 1 == self.id) then
+			if not (((i - 1) % self.last_group) + 1 == self.id) then
 				remove[#remove +1] = self.system.data[i]
 			end
 		end
