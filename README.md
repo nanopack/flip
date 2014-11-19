@@ -18,7 +18,7 @@ Here is a an example config file:
 	,"log_level" : "info"
 	,"servers" : 
 		{"flip" : {"ip" : "127.0.0.1","port" : 2200, "systems": ["ip"]}
-		,"flip1" : {"ip" : "127.0.0.1","port" : 2201, "systems": ["ip"]}
+		,"flip1" : {"priority" : 1,"ip" : "127.0.0.1","port" : 2201, "systems": ["ip"]}
 		,"flip2" : {"ip" : "127.0.0.1","port" : 2202}}
 	,"cluster" : 
 		{"config": {}
@@ -88,6 +88,7 @@ The next part is the 'servers' section. Each server has an id, an ip and port co
 - ip - the ip where the node is located
 - port - the port where flip is listening 
 - system - a list of systems to install on the node
+- priority - a lower priority affects how data is assigned. data points will be assigned to nodes with a lower priority before other nodes, defaults to `+infinity`
 
 ##Other config options
 Flip has other parameters that can be enabled to tune it to your specific application.

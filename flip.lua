@@ -46,11 +46,26 @@ function Flip:initialize(config)
 		self.config.quorum = math.floor(server_count/2) + 1
 	end
 
+	
+	-- we make server an array so that they can be sorted
+	local servers = {}
+	for id,value in pairs(config.servers) do
+		value.id = id
+		servers[#servers + 1] = value
+	end
+
 	-- we sort these so that we can ensure that they are the same across
-	-- all nodes
-	table.sort(config.servers,function(mem1,mem2) 
-		return mem1.id < mem2.id 
+	-- all nodes, they are sorted by priority, and then by id
+	table.sort(servers,function(mem1,mem2) 
+		return
+			(mem1.priority and mem2.priority and (mem1.priority < mem2.priority))
+			or
+			(mem1.priority and not mem2.priority)
+			or
+			(not mem1.priority and not mem2.priority and (mem1.id < mem2.id))
 	end)
+	config.sorted_servers = servers
+	logger:info("servers",config.sorted_servers)
 
 	-- we need to merge all the configs together
 	for key,value in pairs(config.cluster.system) do
@@ -76,8 +91,7 @@ function Flip:initialize(config)
 		end
 	end
 
-	for id,opts in pairs(config.servers) do
-		opts.id = id
+	for _idx,opts in pairs(config.sorted_servers) do
 		member = Member:new(opts,config)
 		self:add_member(member)
 		member:on('state_change',function(...) self:check(...) end)
