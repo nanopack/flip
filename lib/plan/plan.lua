@@ -47,6 +47,9 @@ function Plan:initialize(system,id)
 	if self.mature == nil then
 		self.mature = false
 	end
+
+	-- this only works on strings,
+	table.sort(system.data)
 end
 
 function Plan:add_member(member)
