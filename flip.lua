@@ -17,81 +17,20 @@ local string = require('string')
 local math = require('math')
 local logger = require('./lib/logger')
 local Member = require('./lib/member')
-local systems = require('./lib/system')
+local System = require('./lib/system')
 
 local Flip = Emitter:extend()
 
 function Flip:initialize(config)
-	local main_server = config.servers[config.id]
-	if not main_server then
-		logger:fatal("this server is not in the server config block",config.id,config.servers)
-		process.exit(1)
-	end
-	config.members_alive = 0
 	self.config = config
 	self.servers = {}
 	self.note = {}
-	if not config.systems then
-		config.systems = {}
-	end
-	self.dgram = dgram.createSocket('udp4')
-	self.dgram:bind(main_server.port,main_server.ip)
 
-	-- default quorum needed
-	if not self.config.quorum then
-		local server_count = 0
-		for _id,_value in pairs(self.config.servers) do
-			server_count = server_count + 1
-		end
-		self.config.quorum = math.floor(server_count/2) + 1
-	end
-
+	self.system = System:new(config.cluster,config.id)
 	
-	-- we make server an array so that they can be sorted
-	local servers = {}
-	for id,value in pairs(config.servers) do
-		value.id = id
-		servers[#servers + 1] = value
-	end
-
-	-- we sort these so that we can ensure that they are the same across
-	-- all nodes, they are sorted by priority, and then by id
-	table.sort(servers,function(mem1,mem2) 
-		return
-			(mem1.priority and mem2.priority and (mem1.priority < mem2.priority))
-			or
-			(mem1.priority and not mem2.priority)
-			or
-			(not mem1.priority and not mem2.priority and (mem1.id < mem2.id))
-	end)
-	config.sorted_servers = servers
-
-	-- we need to merge all the configs together
-	for key,value in pairs(config.cluster.system) do
-		local merged = {}
-		if config.cluster.config then
-			for k,v in pairs(config.cluster.config) do
-				merged[k] = v
-			end
-		end
-
-		if value.config then
-			for k,v in pairs(value.config) do
-				merged[k] = v
-			end
-		end
-
-		value.config = merged
-		if value.type and systems[value.type] and systems[value.type].prepare then
-			value.data = systems[value.type].prepare(value.data)
-		else
-			-- this will only work with strings....
-			table.sort(value.data)
-		end
-	end
-
 	for _idx,opts in pairs(config.sorted_servers) do
 		member = Member:new(opts,config)
+		self.system:add_member(member)
 		self:add_member(member)
 		member:on('state_change',function(...) self:check(...) end)
 	end
@@ -104,13 +43,16 @@ function Flip:initialize(config)
 end
 
 function Flip:start()
-	for id,member in pairs(self.servers) do
-		member:enable()
-	end
+	self.system:enable()
 
 	local member = self:find_member(self.config.id)
 	member:update_state('alive')
-	self.dgram:on('message',function(...) self:handle_message(...) end)
+	
+	local socket = dgram.createSocket('udp4')
+	socket:bind(member.port,member.ip)
+	socket:on('message',function(...) self:handle_message(...) end)
+	self.dgram = socket
+
 	self.gossip_timer = timer.setTimeout(self.config.gossip_interval, self.gossip_time, self)
 end
 

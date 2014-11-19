@@ -12,6 +12,7 @@
 
 local fs = require('fs')
 local JSON = require('json')
+local math = require('math')
 local utils = require('utils')
 local Flip = require('./flip')
 local logger = require('./lib/logger')
@@ -27,23 +28,96 @@ if process.argv[1] then
 	configPath = process.argv[1]
 end
 
+if configPath == '-h' then
+	p("usage: flipd [path/to/config/file]")
+	process.exit(0)
+else
 
--- load config file
-fs.readFile(configPath,function(err,data)
-	if err then
-		p('unable to load config file',err)
-		process.exit(1)
-	else
-		local config = JSON.parse(data)
-		if config.log_level and logger:valid_level(config.log_level) then
-			logger:add_logger(config.log_level,'console',p)
-		else
-			logger:add_logger('info','console',p)
+	local validate_config = function(config)
+		-- ensure that all requires values are in the config file
+		local ensure = function(value,name,...)
+			if not value then
+				if not name then
+					logger:fatal(...)
+				else
+					logger:fatal('config is missing required field \''.. name ..'\'')
+				end
+				process.exit(1)	
+			end
 		end
-		local flip = Flip:new(config)
 
-		logger:info('starting up flip',config)
+		ensure(config.cluster,'cluster')
+		ensure(config.cluster.system,'cluster.system')
+		ensure(config.servers[config.id],nil
+					,"this server is not in the server config block",config.id
+					,config.servers)
 
-		flip:start()
+		
+		-- default quorum might be needed
+		if not config.quorum then
+			local server_count = 0
+			for _id,_value in pairs(config.servers) do
+				server_count = server_count + 1
+			end
+			config.quorum = math.floor(server_count/2) + 1
+		end
+
+		-- we make server an array so that they can be sorted
+	local servers = {}
+	for id,value in pairs(config.servers) do
+		value.id = id
+		servers[#servers + 1] = value
 	end
-end)
+
+	-- we sort these so that we can ensure that they are the same across
+	-- all nodes, they are sorted by priority, and then by id
+	table.sort(servers,function(mem1,mem2) 
+		return
+			(mem1.priority and mem2.priority and (mem1.priority < mem2.priority))
+			or
+			(mem1.priority and not mem2.priority)
+			or
+			(not mem1.priority and not mem2.priority and (mem1.id < mem2.id))
+	end)
+	config.sorted_servers = servers
+
+		-- we need to merge all the configs together
+		for key,value in pairs(config.cluster.system) do
+			local merged = {}
+			if config.cluster.config then
+				for k,v in pairs(config.cluster.config) do
+					merged[k] = v
+				end
+			end
+
+			if value.config then
+				for k,v in pairs(value.config) do
+					merged[k] = v
+				end
+			end
+
+			value.config = merged
+		end
+	end
+
+	-- load config file
+	fs.readFile(configPath,function(err,data)
+		if err then
+			p('unable to load config file',err)
+			process.exit(1)
+		else
+			local config = JSON.parse(data)
+			if config.log_level and logger:valid_level(config.log_level) then
+				logger:add_logger(config.log_level,'console',p)
+			else
+				logger:add_logger('info','console',p)
+			end
+			validate_config(config)
+			local flip = Flip:new(config)
+
+			logger:info('starting up flip',config)
+
+			flip:start()
+		end
+	end)
+end

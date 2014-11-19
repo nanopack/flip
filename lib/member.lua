@@ -30,44 +30,13 @@ function Member:initialize(config,global)
 	self.ip = config.ip
 	self.port = config.port
 	self.id = config.id
+	self.systems = config.systems
 	logger:debug('created member',config)
 	self.probed = {}
-	self.systems = {}
-	
-	if not config.systems then
-		config.systems = {}
-	end
-
-	local node_keys = {}
-
-	-- we only want this node to failover for systems that it has
-	-- assigned to it
-	if global.servers[global.id].systems then
-		for _idx,key in pairs(global.servers[global.id].systems) do
-			node_keys[key] = true
-		end
-	end
-
-	-- create a system for this member and its data
-	for _ids,key in pairs(config.systems) do
-		if node_keys[key] then
-			local group = self.config.cluster.system[key]
-			if not system[group.type] then
-				logger:fatal('unknown system type',group.type)
-				process.exit(1)
-			end
-			self.systems[key] = (system[group.type]):new(group)
-		end
-	end
-	-- self:on('state_change',self.handle_change)
 end
 
 function Member:enable()
 	self:emit('state_change',self,'new')
-	-- set up the cluster for this member
-	for key,system in pairs(self.systems) do
-		system:enable(self)
-	end
 end
 
 function Member:probe(who)
