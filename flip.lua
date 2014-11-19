@@ -65,7 +65,6 @@ function Flip:initialize(config)
 			(not mem1.priority and not mem2.priority and (mem1.id < mem2.id))
 	end)
 	config.sorted_servers = servers
-	logger:info("servers",config.sorted_servers)
 
 	-- we need to merge all the configs together
 	for key,value in pairs(config.cluster.system) do
