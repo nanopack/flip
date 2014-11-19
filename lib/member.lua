@@ -31,6 +31,9 @@ function Member:initialize(config,global)
 	self.port = config.port
 	self.id = config.id
 	self.systems = config.systems
+	if not self.systems then
+		self.systems = {}
+	end
 	logger:debug('created member',config)
 	self.probed = {}
 end

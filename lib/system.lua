@@ -41,8 +41,18 @@ end
 function System:disable()
 	if self.enabled then
 		self.enabled = false
+		count = 0
 		for _idx,plan in pairs(self.plans) do
-			plan:disable()
+			count = count + 1
+			plan:disable(function()
+				count = count - 1
+				if count == 0 then
+					process.exit(0)
+				end
+			end)
+		end
+		if count == 0 then
+			process.exit(0)
 		end
 	else
 		logger:warning('requested to disable system, but already disabled')

@@ -55,9 +55,9 @@ function Plan:add_member(member)
 	self.alive[#self.members] = true
 end
 
-function Plan:disable()
+function Plan:disable(cb)
 	self:_run('down',self.plan,function()
-		process.exit(1)
+		cb()
 	end)
 end
 
