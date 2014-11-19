@@ -37,7 +37,7 @@ So using the above config file the data will be split between the nodes as follo
 
 **flip** | **flip1** | **flip2**
 --- | --- | ---
-192.168.0.1 | 192.168.0.2 |
+192.168.0.2 | 192.168.0.1 |
 
 The nodes will begin to activly probe each other and until they can detect and agree that anything has changed, the data will stay where is it.
 
@@ -53,7 +53,7 @@ The ip moved over to the other node that is the member of the 'ip' system, which
 
 **flip** | **flip1** | **flip2**
 --- | --- | ---
-192.168.0.1 | 192.168.0.2 |
+192.168.0.2 | 192.168.0.1 |
 
 ##Network partition
 
@@ -61,7 +61,7 @@ What would happen if there was a network partition and none of the nodes could t
 
 **flip** | **flip1** | **flip2**
 --- | --- | ---
-192.168.0.1 | 192.168.0.2 |
+192.168.0.2 | 192.168.0.1 |
 
 That is a brief explanation of what happens in a failover situation.
 
