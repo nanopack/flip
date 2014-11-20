@@ -54,7 +54,9 @@ function System:disable(cb)
 			end)
 		end
 		if count == 0 then
-			process.exit(0)
+			if cb then
+				cb()
+			end
 		end
 	else
 		logger:warning('requested to disable system, but already disabled')
