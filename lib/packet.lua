@@ -40,6 +40,18 @@ local integerify = function(val)
 	return value
 end
 
+-- packets are in the format:
+-- [key]:32 [id]:4 [seq]:4 [ignore_bits]:1 [nodes]:??
+-- key is the key used to identify the cluster
+-- id is the id of the local server that is sending the packet
+-- seq is the sequence id of the packet that we are sending
+-- ignore_bits is how manny bits to ignore at the end of the node
+--   array. as we may not have exactly (#nodes % 8 == 0) nodes
+-- nodes is an array of bits where every bit represents this nodes
+--   idea of the state of the cluster, each bit is a state of an
+--   individual node.
+--     1 == alive
+--     0 == down
 function Packet:build(secret,id,seq,alive_servers)
 	if not (#alive_servers < 512) then
 		logger:fatal("too many servers")
@@ -47,7 +59,15 @@ function Packet:build(secret,id,seq,alive_servers)
 	end
 	local a,b,c,d = pack(id)
 	local a1,b1,c1,d1 = pack(seq)
-	local chunks = {secret:sub(0,32),string.rep("0",32 - math.min(32,secret:len())),a,b,c,d,a1,b1,c1,d1}
+	local server_count = string.char(8 - (#alive_servers % 8))
+
+	local chunks = 
+		{secret:sub(0,32),string.rep("0",32 - math.min(32,secret:len()))
+		,a,b,c,d
+		,a1,b1,c1
+		,d1
+		,server_count}
+
 	local idx
 	local byte = 0
 	for idx,alive in pairs(alive_servers) do
@@ -73,15 +93,21 @@ function Packet:parse(packet)
 	end
 
 	local nodes = {}
-	local header_size = 32 + 8
+	local header_size = 32 + 9
 	local id = -1
 
+	local empty_servers = packet:byte(41)
 	for idx=header_size+1,size do
 		local byte = packet:byte(idx)
-		for i=0,7 do
+		local max = 7
+		if idx == size then
+			max = max - empty_servers
+		end
+		for i=0,max do
 			nodes[#nodes + 1] = not (bit.band(byte,bit.lshift(1,i)) == 0)
 		end
 	end
+
 	return packet:sub(1,32),integerify(packet:sub(33,36)),integerify(packet:sub(37,40)),nodes
 end
 
