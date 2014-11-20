@@ -38,7 +38,7 @@ function System:add_member(member)
 	self.indexed_members[member.id] = member
 end
 
-function System:disable()
+function System:disable(cb)
 	if self.enabled then
 		self.enabled = false
 		count = 0
@@ -47,7 +47,9 @@ function System:disable()
 			plan:disable(function()
 				count = count - 1
 				if count == 0 then
-					process.exit(0)
+					if cb then
+						cb()
+					end
 				end
 			end)
 		end
@@ -90,9 +92,10 @@ function System:enable()
 		-- that it is responsible for, but only if requested
 		if self.config.remove_on_failure then
 			local me = self
-			process:on('SIGINT',function() me:disable() end)
-			process:on('SIGQUIT',function() me:disable() end)
-			process:on('SIGTERM',function() me:disable() end)
+			local stop = function() me:disable(function() process.exit(0) end) end
+			process:on('SIGINT',stop)
+			process:on('SIGQUIT',stop)
+			process:on('SIGTERM',stop)
 		end
 
 		-- we enable all the plans to start the ball rolling
