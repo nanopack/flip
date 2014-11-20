@@ -140,8 +140,6 @@ function Plan:compute(new_plan)
 	logger:debug("start",idx,new_add,self.plan)
 
 	while lidx <= #new_add do
-	-- for idx=1, #new_add do
-		
 		
 		logger:debug("compare",lidx,self.plan[index],new_add[lidx])
 		-- new_add = { "192.168.0.1", "192.168.0.2", "192.168.0.3", "192.168.0.4" }	
