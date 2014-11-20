@@ -11,6 +11,11 @@ ip2dec () {
 if [ `uname -s` = 'SunOS' ]; then  
   ip=`ip2dec $1`
   interface=`echo  "$2" | json interface`
+  
+  ## we delay the up so that we don't get ips flagged as
+  ## DUPLICATE
+  sleep 2
+
   if ! ipadm show-addr $interface/ip$ip &> /dev/null; then
     exec ipadm create-addr -t -T static -a $1 $interface/ip$ip
   fi
