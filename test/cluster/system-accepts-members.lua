@@ -13,41 +13,62 @@
 local Member = require('../../lib/member')
 local System = require('../../lib/system')
 
-for i=1,10 do
-	data[#data + 1] = 'testing_' .. i
-end
+local test = require('../../modules/tape')("test_1")
 
-local sys_config = 
-	{ip = 
-		{alive = 'up'
-		,down = 'down'
-		,type = 'sharded'
-		,config = {}
-		,data = data}}
+test("My awesome test", nil, function(t)
+  t:is_number(1, "1 should be a number")
+  t:is_number(2, "2 should be a number")
+  t:finish()
+end)
+
+test("another test", nil, function(t)
+  t:is_number(1, "1 should be a number")
+  t:is_number(2, "2 should be a number")
+  t:finish()
+end)
+
+test("another test", nil, function(t)
+  t:is_number(1, "1 should be a number")
+  t:is_number(2, "2 should be a number")
+  t:finish()
+end)
+
+-- local data = {}
+-- for i=1,10 do
+-- 	data[#data + 1] = 'testing_' .. i
+-- end
+
+-- local sys_config = 
+-- 	{ip = 
+-- 		{alive = 'up'
+-- 		,down = 'down'
+-- 		,type = 'sharded'
+-- 		,config = {}
+-- 		,data = data}}
 
 
 
-local main = System:new(sys_config,'testing_1')
-local global_config = 
-	{id = 'testing_1'}
+-- local main = System:new(sys_config,'testing_1')
+-- local global_config = 
+-- 	{id = 'testing_1'}
 
-local members = {}
-for i=1,10 do
-	local mem_config = 
-		{id = 'id_'.. i
-		,systems = ['ip']}
+-- local members = {}
+-- for i=1,10 do
+-- 	local mem_config = 
+-- 		{id = 'id_'.. i
+-- 		,systems = {'ip'}}
 
-	local member = Member:new(mem_config)
-	assert(#member.id == 'id_' .. i)
-	assert(member.systems[1] == 'ip')
-	assert(#member.systems == 1)
-	members[#members + 1] = member
+-- 	local member = Member:new(mem_config)
+-- 	assert(#member.id == 'id_' .. i)
+-- 	assert(member.systems[1] == 'ip')
+-- 	assert(#member.systems == 1)
+-- 	members[#members + 1] = member
 	
-	local count = main.members
-	main:add_member(member)
-	assert((main.members - count) == 1)
-end
+-- 	local count = main.members
+-- 	main:add_member(member)
+-- 	assert((main.members - count) == 1)
+-- end
 
-assert(#main.members == 10)
-main:enable()
+-- assert(#main.members == 10)
+-- main:enable()
 
