@@ -47,6 +47,10 @@ else
 			end
 		end
 
+		-- pad the key
+
+		config.key = config.key:sub(0,32) .. string.rep("0",32 - math.min(32,config.key:len()))
+
 		ensure(config.cluster,'cluster')
 		ensure(config.cluster.system,'cluster.system')
 		ensure(config.servers[config.id],nil

@@ -19,21 +19,31 @@ local math = require('math')
 local logger = require('./lib/logger')
 local Member = require('./lib/member')
 local System = require('./lib/system')
+local Packet = require('./lib/packet')
 
 local Flip = Emitter:extend()
 
 function Flip:initialize(config)
 	self.config = config
 	self.servers = {}
-	self.note = {}
+	self.iservers = {}
+	self.alive = {}
+	self.packet = Packet:new()
 
 	self.system = System:new(config.cluster,config.id)
 	
-	for _idx,opts in pairs(config.sorted_servers) do
+	for idx,opts in pairs(config.sorted_servers) do
+		
+		-- everything starts out alive
+		self.alive[idx] = true
+
 		member = Member:new(opts,config)
 		self.system:add_member(member)
 		self:add_member(member)
-		member:on('state_change',function(...) self:check(...) end)
+		member:on('state_change',function(...) self:track(...,idx) end)
+		if member.id == config.id then
+			self.id = idx
+		end
 	end
 
 	self.commands = 
@@ -58,17 +68,21 @@ function Flip:start()
 end
 
 function Flip:find_member(key)
-	return self.servers[key]
+	if type(key) == "number" then
+		return self.iservers[key]
+	else
+		return self.servers[key]
+	end
 end
 
 function Flip:add_member(member)
 	local key = member.id
 	self.servers[key] = member
+	self.iservers[#self.iservers + 1] = member
 end
 
 function Flip:get_gossip_members()
 	local members = {}
-	logger:debug('servers',self.servers)
 	for _idx,member in pairs(self.servers) do
 		if member:needs_ping() then
 			-- this should be randomized, and important ones at the head of
@@ -88,45 +102,15 @@ end
 
 function Flip:handle_message(msg, rinfo)
 	logger:debug('message received',msg,rinfo)
-	local key,cmds  = self:validate_message(msg,rinfo)
+	local key,id,seq,nodes = self.packet:parse(msg)
 	if key == self.config.key then
-		for _indx,command in pairs(cmds) do
-			local cmd = command.cmd
-			local args = command.args
-			if self.commands[command.cmd] then
-				self.commands[command.cmd](self,unpack(args))
-			end
-		end
+		local down = {}
+		self:ping(seq,id,nodes)
 	else
 		logger:warning('wrong key in packet',rinfo,msg)
 	end
 end
 
-
-function Flip:validate_message (msg)
-	-- 'key cmd:arg,arg2;cmd2:arg;'	
-	
-	-- this really needs to be more efficient.
-	local key,rest = msg:match("([^ ]+) (.+)")
-	logger:debug("packet",key,rest)
-	local cmds = {}
-	while rest and rest:len() > 0 do
-		local cmd,args
-		cmd,args,rest = rest:match("([^:]+):([^;]+);(.*)")
-		split = {}
-		if args then
-			for arg in string.gmatch(args, "([^,]+),?") do
-				split[#split + 1] = arg
-			end
-		end
-		logger:debug("cmd",cmd,split,rest)
-		cmds[#cmds + 1] = 
-			{cmd = cmd
-			,args = split}
-	end
-	
-	return key,cmds
-end
 
 
 function Flip:gossip_time()
@@ -145,10 +129,9 @@ function Flip:ping_members(members)
 	local count = 0
 	while member do
 		if member:needs_ping() then
-			local packet = member:ping()
+			local packet = self.packet:build(self.config.key,self.id,member:next_seq(),self.alive)
 			logger:debug('sending ping',member.id)
-			local notes = self:notes()
-			self:send_packet(packet .. notes,member)
+			self:send_packet(packet,member)
 			member:start_alive_check()
 			count = count + 1 
 		end
@@ -179,79 +162,42 @@ function Flip:send_packet(packet,member)
 	end)
 end
 
-function Flip:notes()
-	local notes = ''
-	local down = ''
-	local pdown = ''
-	for id,flags in pairs(self.note) do
-		if flags.pdown then
-			if pdown == '' then
-				pdown = pdown .. id
-			else
-				pdown = pdown .. ',' ..id
-			end
-		end
-		if flags.down then
-			if down == '' then
-				down = down .. id
-			else
-				down = down .. ',' ..id
-			end
-		end
-	end
-	if not (down == '') then
-		notes = 'down:' .. self.config.id .. ',' .. down .. ';'
-	end
-	if not (pdown == '') then
-		notes = 'probe:' .. self.config.id .. ',' .. pdown .. ';'
-	end
-	return notes
-end
-
-function Flip:ping(seq,id)
+function Flip:ping(seq,id,nodes)
 	local member = self:find_member(id)
 
 	if member then
 		member:alive(seq)
 		if member:needs_ping() then
-			local packet = member:ping()
+			local packet = self.packet:build(self.config.key,self.id,member:next_seq(),self.alive)
 			logger:debug('sending ping (ack)',id)
-			local notes = self:notes()
-			self:send_packet(packet .. notes,member)
+			self:send_packet(packet,member)
+			for node,alive in pairs(nodes) do
+				if not alive then
+					self:probe(id,node)
+				end
+			end
 		end
 	else
 		logger:warning('unknown member',id)
 	end
 end
 
-function Flip:check(member,new_state)
-	local notes = self.note[member.id]
-	if not notes then
-		notes = {}
-		self.note[member.id] = notes
+function Flip:track(member,new_state,id)
+	if new_state == 'alive' then
+		self.alive[id] = true
+	elseif (new_state == 'down') or (new_state == 'probably_down') then
+		self.alive[id] = false
 	end
-	notes.pdown = (new_state == 'probably_down')
-	notes.down = (new_state == 'down')
 end
 
 function Flip:probe(from,...)
-	local member = self:find_member(from)
-	if member then
-		logger:debug("probing",...)
-		for _idx,who in pairs({...}) do
-			if not (self.config.id == who) then
+	if not (self.config.id == who) then
 
-				local down_member = self:find_member(who)
+		local down_member = self:find_member(who)
 
-				if down_member then
-					down_member:probe(from)
-				else
-					logger:warning('unknown member',who)
-				end
-			end
+		if down_member then
+			down_member:probe(from)
 		end
-	else
-		logger:warning('unknown member',from)
 	end
 end
 
