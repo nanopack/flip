@@ -190,7 +190,7 @@ function Flip:track(member,new_state,id)
 	end
 end
 
-function Flip:probe(from,...)
+function Flip:probe(from,who)
 	if not (self.config.id == who) then
 
 		local down_member = self:find_member(who)
