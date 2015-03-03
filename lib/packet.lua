@@ -23,7 +23,7 @@ function Packet:initialize()
 
 end
 
-local pack = function(value)
+function Packet:pack(value)
 	local a,b,c,d
 	d = value 
 	c = math.floor(d / 256)
@@ -32,7 +32,7 @@ local pack = function(value)
 	return string.char(d % 256),string.char(c % 256),string.char(b % 256),string.char(a % 256)
 end
 
-local integerify = function(val)
+function Packet:integerify(val)
 	local value = 0
 	for i=val:len(),1,-1 do
 		value = (value * 256) + val:byte(i)
@@ -55,10 +55,10 @@ end
 function Packet:build(secret,id,seq,alive_servers)
 	if not (#alive_servers < 512) then
 		logger:fatal("too many servers")
-		process.exit(1)
+		process:exit(1)
 	end
-	local a,b,c,d = pack(id)
-	local a1,b1,c1,d1 = pack(seq)
+	local a,b,c,d = self:pack(id)
+	local a1,b1,c1,d1 = self:pack(seq)
 	local server_count = string.char(8 - (#alive_servers % 8))
 
 	local chunks = 
@@ -105,10 +105,10 @@ function Packet:parse(packet)
 		end
 		for i=0,max do
 			nodes[#nodes + 1] = not (bit.band(byte,bit.lshift(1,i)) == 0)
+			
 		end
 	end
-
-	return packet:sub(1,32),integerify(packet:sub(33,36)),integerify(packet:sub(37,40)),nodes
+	return packet:sub(1,32),self:integerify(packet:sub(33,36)),self:integerify(packet:sub(37,40)),nodes
 end
 
 return Packet

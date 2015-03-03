@@ -1,0 +1,5 @@
+           fetch  {bucket} {id} - retreive an object from the flip  kv-store
+           store  {bucket} {id} (-script {path}|-file {path}|{data}) - load data into the flip kv-stote
+           delete {bucket} {id} {last_known} - delete an object from the flip kv-store
+           join {ip} {port} - join this node to a cluster of other flip nodes
+           leave - have this node leave the cluster of flip nodes

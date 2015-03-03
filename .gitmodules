@@ -1,3 +1,6 @@
 [submodule "modules/tape"]
 	path = modules/tape
 	url = git@github.com:virgo-agent-toolkit/luvit-tape.git
+[submodule "modules/lever"]
+	path = modules/lever
+	url = https://github.com/DBarney/lever.git

@@ -10,7 +10,7 @@
 ---------------------------------------------------------------------
 
 local Emitter = require('core').Emitter
-local hrtime = require('uv').Process.hrtime
+local hrtime = require('uv').hrtime
 local JSON = require('json')
 local os = require('os')
 local timer = require('timer')
@@ -20,26 +20,40 @@ local system = require('./system')
 
 local Member = Emitter:extend()
 
-function Member:initialize(config,global)
+function Member:initialize(id,config,global)
 	self.config = global
 	self.state = 'new'
 	self.last_check = hrtime()
 	self.last_send = hrtime()
+	self.id = id
 	self.seq = -1
 	self.packet_seq = 0
-	self.ip = config.ip
-	self.port = config.port
-	self.id = config.id
-	self.systems = config.systems
-	if not self.systems then
-		self.systems = {}
-	end
+	self:update(config)
 	logger:debug('created member',config)
 	self.probed = {}
+	self.disable = {}
 end
 
 function Member:enable()
 	self:emit('state_change',self,'new')
+end
+
+function Member:update(config)
+	self.ip = config.ip
+	self.port = config.port
+	self.systems = config.systems
+	self.opts = config.opts
+	self.plan_idxs = {}
+	if not self.systems then
+		self.systems = {}
+	end
+	if not self.opts then
+		self.opts = {}
+	end
+end
+
+function Member:destroy()
+	self:removeListener()
 end
 
 function Member:probe(who)
@@ -49,7 +63,7 @@ function Member:probe(who)
 		for _,_ in pairs(self.probed) do
 			count = count + 1
 		end
-		logger:debug('checking quorum',count,self.config.quorum)
+		logger:info('checking quorum',count,self.config.quorum)
 		if count >= self.config.quorum then
 			self:clear_alive_check()
 			self:update_state('down')
@@ -59,13 +73,13 @@ end
 
 function Member:needs_ping()
 	return not (self.id == self.config.id) and (
-			(hrtime() - self.last_check > (1.5 * self.config.gossip_interval)) or 
-			(hrtime() - self.last_send > self.config.gossip_interval) or 
+			(hrtime() - self.last_check > (1000000 * (1.5 * self.config.gossip_interval))) or 
+			(hrtime() - self.last_send > (1000000 * self.config.gossip_interval)) or 
 			(self.state == 'probably_down'))
 end
 
 function Member:needs_probe()
-	return (hrtime() - self.last_check > 750)
+	return ((hrtime() - (1000000 * self.last_check)) > 750)
 end
 
 function Member:alive(seq)

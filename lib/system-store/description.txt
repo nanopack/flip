@@ -1,0 +1,1 @@
+flip store [cmd] [args...] - Interact with the flip kv-store
