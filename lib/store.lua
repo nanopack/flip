@@ -216,26 +216,7 @@ function Store:start(parent)
 	if err then
 		return nil,nil,nil,nil,"txn: "..err
 	end
-
-	local objects,err = DB.open(txn,"objects",0)
-	if err then
-		Txn.abort(txn)
-		return nil,nil,nil,nil,"objects: "..err
-	end
-
-	local buckets,err = DB.open(txn,"buckets",DB.MDB_DUPSORT)
-	if err then
-		Txn.abort(txn)
-		return nil,nil,nil,nil,"buckets: "..err
-	end
-
-	local logs,err = DB.open(txn,"logs",DB.MDB_INTEGERKEY)
-	if err then
-		Txn.abort(txn)
-		return nil,nil,nil,nil,"logs: "..err
-	end
-
-	return txn,objects,buckets,logs
+	return txn,self.db_objects,self.db_buckets,self.db_logs
 end
 
 function Store:_store(b_id,id,data,sync,broadcast,parent,cb)
@@ -419,13 +400,7 @@ function  Store:replicate(operation,op_timestamp,cb)
 				logger:error("unable to begin txn to clear log")
 				return
 			end
-			local logs,err = DB.open(txn,"logs",DB.MDB_INTEGERKEY)
-			if err then
-				Txn.abort(txn)
-				logger:error("unable to open logs DB for cleaning")
-				return
-			end
-			Txn.del(txn,logs,op_timestamp)
+			Txn.del(txn,self.db_logs,op_timestamp)
 			err = Txn.commit(txn)
 			if err then
 				logger:error("unable to open clean logs DB")

@@ -16,7 +16,9 @@ local table = require('table')
 local string = require('string')
 local json = require('json')
 local math = require('math')
-local hrtime = require('uv').hrtime
+local uv = require('uv')
+local hrtime = uv.hrtime
+local stdin = require('pretty-print').stdin
 local logger = require('./logger')
 local Member = require('./member')
 local System = require('./system')
@@ -45,6 +47,16 @@ function Flip:start()
 	-- we create a system so that it is setup by the time that servers
 	-- are added in, it starts working and creating plans
 	self.system = System:new(self.store,self)
+
+
+	-- if stdin is closed, we may need to shutdown
+	if self.config.exit_on_stdin_close == true then
+		uv.read_start(stdin, function(err,data)
+			if data == nil then
+				self.system:disable(function() process:exit(0) end)	
+			end
+		end)
+	end
 
 	self.store:open(function(err)
 		if not err then

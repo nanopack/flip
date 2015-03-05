@@ -16,9 +16,9 @@ return {
   	{"luvit/luvit@1.9.1"
   	,"flip/lever@0.2.0"},
   files = {
-    "*.lua",
-    "*.txt",
-    "*.so",
+    "**.lua",
+    "**.txt",
+    "**.so",
     "!examples",
     "!tests",
     "!.DS_Store"

@@ -30,10 +30,10 @@ return function(Store)
 				logger:fatal('unable to create store',err)
 				process:exit(1)
 			end
-			err = Env.open(env,self.db_path,Env.MDB_NOSUBDIR,0755)
+			err = Env.open(env,self.db_path,Env.MDB_NOSUBDIR,tonumber('0644',8))
 			if err == 'Device busy' then
 				fs.unlink(env,self.db_path .. '-lock')
-				err = Env.open(env,self.db_path,Env.MDB_NOSUBDIR,0755)
+				err = Env.open(env,self.db_path,Env.MDB_NOSUBDIR,tonumber('0644',8))
 			end
 			if err then 
 				logger:fatal('unable to open store',err)
@@ -41,10 +41,12 @@ return function(Store)
 			end
 			self.env = env
 			local txn = Env.txn_begin(env,nil,0)
-			DB.open(txn,"objects",DB.MDB_CREATE)
-			DB.open(txn,"replication",DB.MDB_CREATE)
-			local logs,err1 = DB.open(txn,"logs",DB.MDB_CREATE + DB.MDB_INTEGERKEY)
-			local cursor = Cursor.open(txn,logs)
+			self.db_objects = DB.open(txn,"objects",DB.MDB_CREATE)
+			self.db_replication = DB.open(txn,"replication",DB.MDB_CREATE)
+			self.db_logs = DB.open(txn,"logs",DB.MDB_CREATE + DB.MDB_INTEGERKEY)
+			self.db_buckets = DB.open(txn,"buckets",DB.MDB_DUPSORT + DB.MDB_CREATE)
+			p("opening tables",self.db_objects,self.db_replication,self.db_logs,self.db_buckets)
+			local cursor = Cursor.open(txn,self.db_logs)
 			local key,_op = Cursor.get(cursor,nil,Cursor.MDB_LAST,"unsigned long*")
 			if key then
 				logger:info("last operation commited",key[0])
@@ -53,7 +55,6 @@ return function(Store)
 				logger:info("new database was opened")
 				self.version = hrtime() * 100000
 			end
-			DB.open(txn,"buckets",DB.MDB_DUPSORT + DB.MDB_CREATE)
 			Txn.commit(txn)
 			cb(not exists,err)
 		end)
