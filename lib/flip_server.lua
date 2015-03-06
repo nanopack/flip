@@ -38,26 +38,24 @@ if not data then
 end
 
 local validate_config = function(config)
-	-- ensure that all requires values are in the config file
-	local ensure = function(value,name,...)
-		if not value then
-			if not name then
-				logger:fatal(...)
-			else
-				logger:fatal('config is missing required field \''.. name ..'\'')
-			end
-			process:exit(1)	
+	-- add_default adds default values
+	local add_default = function(obj,name,value)
+		if obj[name] == nil then
+			obj[name] = value
 		end
 	end
 
-	ensure(config.id,'id')
-	ensure(config.gossip,'gossip')
-	ensure(config.gossip.ip,'gossip.ip')
-	ensure(config.gossip.port,'gossip.port')
-	ensure(config.api,'api')
-	ensure(config.api.ip,'api.ip')
-	ensure(config.api.port,'api.port')
-	ensure(config.db,'db')
+	add_default(config,'id','flip')
+	add_default(config,'gossip',{})
+	add_default(config.gossip,'ip','127.0.0.1')
+	add_default(config.gossip,'port',2000)
+	add_default(config,'replication',{})
+	add_default(config.replication,'ip','127.0.0.1')
+	add_default(config.replication,'port',2001)
+	add_default(config,'api',{})
+	add_default(config.api,'ip','127.0.0.1')
+	add_default(config.api,'port',2345)
+	add_default(config,'db','./db')
 end
 
 logger:debug("parsing",data)
