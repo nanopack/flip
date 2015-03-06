@@ -32,7 +32,7 @@ return function(Store)
 			end
 			err = Env.open(env,self.db_path,Env.MDB_NOSUBDIR,tonumber('0644',8))
 			if err == 'Device busy' then
-				fs.unlink(env,self.db_path .. '-lock')
+				fs.unlinkSync(self.db_path .. '-lock')
 				err = Env.open(env,self.db_path,Env.MDB_NOSUBDIR,tonumber('0644',8))
 			end
 			if err then 
