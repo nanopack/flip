@@ -1,3 +1,5 @@
+[![flip logo](http://nano-assets.gopagoda.io/readme-headers/flip.png)](http://nanobox.io/open-source#flip)
+
 **This is a work in progess, as [luvit](https://luvit.io) is evolving its api, flip will have to adjust to match.**
 
 #Flip
@@ -107,3 +109,5 @@ Flip has other parameters that can be enabled to tune it to your specific applic
  - Allow data to be added/removed to the system without having to reprovision all nodes in the cluster.
 
 If anyone wants to work on any issues or this future work, I will accept pull requests that have tests written and that move flip closer to being feature complete.
+
+[![flip logo](http://nano-assets.gopagoda.io/open-src/nanobox-open-src.png)](http://nanobox.io/open-source)
